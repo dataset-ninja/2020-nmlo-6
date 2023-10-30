@@ -1,9 +1,11 @@
 import supervisely as sly
+import csv
 import os
+from collections import defaultdict
 from dataset_tools.convert import unpack_if_archive
 import src.settings as s
 from urllib.parse import unquote, urlparse
-from supervisely.io.fs import get_file_name, get_file_size
+from supervisely.io.fs import get_file_name, get_file_name_with_ext
 import shutil
 
 from tqdm import tqdm
@@ -69,17 +71,71 @@ def count_files(path, extension):
 def convert_and_upload_supervisely_project(
     api: sly.Api, workspace_id: int, project_name: str
 ) -> sly.ProjectInfo:
-    ### Function should read local dataset and upload it to Supervisely project, then return project info.###
-    raise NotImplementedError("The converter should be implemented manually.")
 
-    # dataset_path = "/local/path/to/your/dataset" # general way
-    # dataset_path = download_dataset(teamfiles_dir) # for large datasets stored on instance
-
-    # ... some code here ...
-
-    # sly.logger.info('Deleting temporary app storage files...')
-    # shutil.rmtree(storage_dir)
-
-    # return project
+    train_images_path = os.path.join("archive","data","training_images")
+    test_images_path = os.path.join("archive","data","testing_images")
+    ann_path = os.path.join("archive","data","train_solution_bounding_boxes (1).csv")
+    batch_size = 30
 
 
+    def create_ann(image_path):
+        labels = []
+
+        # image_np = sly.imaging.image.read(image_path)[:, :, 0]
+        img_height = 380  # image_np.shape[0]
+        img_wight = 676  # image_np.shape[1]
+
+        image_name = get_file_name_with_ext(image_path)
+
+        bboxes_data = image_name_to_bboxes[image_name]
+        for curr_bbox in bboxes_data:
+            curr_bbox = list(map(float, curr_bbox))
+            left = int(curr_bbox[0])
+            top = int(curr_bbox[1])
+            right = int(curr_bbox[2])
+            bottom = int(curr_bbox[3])
+            rectangle = sly.Rectangle(top=top, left=left, bottom=bottom, right=right)
+            label = sly.Label(rectangle, obj_class)
+            labels.append(label)
+
+        return sly.Annotation(img_size=(img_height, img_wight), labels=labels)
+
+
+    obj_class = sly.ObjClass("car", sly.Rectangle)
+
+    project = api.project.create(workspace_id, project_name, change_name_if_conflict=True)
+    meta = sly.ProjectMeta(obj_classes=[obj_class])
+    api.project.update_meta(project.id, meta.to_json())
+
+    image_name_to_bboxes = defaultdict(list)
+
+    with open(ann_path, "r") as file:
+        csvreader = csv.reader(file)
+        for idx, row in enumerate(csvreader):
+            if idx == 0:
+                continue
+            image_name_to_bboxes[row[0]].append(row[1:])
+
+    ds_name_to_images = {"train": train_images_path, "test": test_images_path}
+
+    for ds_name, images_path in ds_name_to_images.items():
+        dataset = api.dataset.create(project.id, ds_name, change_name_if_conflict=True)
+
+        images_names = os.listdir(images_path)
+
+        progress = sly.Progress("Create dataset {}".format(ds_name), len(images_names))
+
+        for img_names_batch in sly.batched(images_names, batch_size=batch_size):
+            images_pathes_batch = [
+                os.path.join(images_path, image_name) for image_name in img_names_batch
+            ]
+
+            img_infos = api.image.upload_paths(dataset.id, img_names_batch, images_pathes_batch)
+            img_ids = [im_info.id for im_info in img_infos]
+
+            anns_batch = [create_ann(image_path) for image_path in images_pathes_batch]
+            api.annotation.upload_anns(img_ids, anns_batch)
+
+            progress.iters_done_report(len(img_names_batch))
+
+    return project
