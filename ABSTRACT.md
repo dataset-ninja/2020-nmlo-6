@@ -1,5 +1,3 @@
+The **2020 NMLO Competition Six** dataset is specifically designed for object detection tasks, featuring 1176 images with annotations centered around a singular class—car. As an integral segment of the NMLO contest, part 6, this dataset is geared towards training object detectors utilizing the YOLO model architecture to detect custom objects within a series of images. 
 
-Sample image template:
-<img src="https://github.com/dataset-ninja/gland-segmentation/assets/78355358/f158d0dd-71d5-41a2-aba5-4a5f57d54c35" alt="image" width="800">
-
-<span style="font-size: smaller; font-style: italic;">Image description.</span>
+The dataset primarily consists of images depicting cars on roads, captured from a side-view-mounted camera on a vehicle. The training data includes annotations exclusively focusing on the *car* class or background (nothing), with bounding boxes specified to precisely train models to identify and locate cars within the images, providing a targeted resource for object detection model development.
