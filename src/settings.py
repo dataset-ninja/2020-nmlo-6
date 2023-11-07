@@ -43,7 +43,7 @@ GITHUB_URL: str = "https://github.com/dataset-ninja/2020-nmlo-6"
 ##################################
 ### * Optional after uploading ###
 ##################################
-DOWNLOAD_ORIGINAL_URL: Optional[Union[str, dict]] = ["https://drive.google.com/drive/folders/10-ap23RsrTrYTbI-SitnzfOMB4wjBxPB"]
+DOWNLOAD_ORIGINAL_URL: Optional[Union[str, dict]] = "https://drive.google.com/drive/folders/10-ap23RsrTrYTbI-SitnzfOMB4wjBxPB"
 # Optional link for downloading original dataset (e.g. "https://some.com/dataset/download")
 
 CLASS2COLOR: Optional[Dict[str, List[str]]] = None
